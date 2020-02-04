@@ -5,6 +5,8 @@ import java.text.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.*;
+import java.util.stream.Collectors;
+
 
 public class MagicSquareForming {
     
@@ -19,7 +21,7 @@ public class MagicSquareForming {
     // Complete the formingMagicSquare function below.
     static int formingMagicSquare(int[][] s) {
 
-        Map<Integer, Set<List<Integer>>> possibleMagicRows = generateMagicRows();
+        Map<Integer, List<List<Integer>>> possibleMagicRows = generateMagicRows(s.length);
         if(verbose)
             possibleMagicRows.forEach((key, value) -> System.err.println("Row " + key + " can be :" + Arrays.toString(value.toArray())));
         Set<List<List<Integer>>> possibleMagicSquares = getPossibleMagicSquares(possibleMagicRows);
@@ -58,47 +60,50 @@ public class MagicSquareForming {
         return minChange;
     }
 
-    // Generates a map of rows with all possible values in them
-    // First and third row should have even corners and an odd number in the middle
-    // Second row should be all Odd with a '5' in the middle
-    static Map<Integer, Set<List<Integer>>> generateMagicRows(){
-        Map<Integer, Set<List<Integer>>> result = new HashMap<>();
-        result.put(1, new HashSet<>());
-        result.put(2, new HashSet<>());
-        result.put(3, new HashSet<>());
+    // Generates a map of rows with all possible values in them of size NxN
+    // Key is the row number... this could have been just a list... not sure what I was thinking...
+    static Map<Integer, List<List<Integer>>> generateMagicRows(int N){
+        Map<Integer, List<List<Integer>>> result = new HashMap<>();
+        
+        int maxNumber = N * N;
+        int magicNumber = ((maxNumber*(maxNumber+1))/2) / N; // Limit of summation 1 .. N divided by the number of rows
 
-
-        for(int first = 1; first <= 9; first++) {
-            for(int second = 1; second <=9; second++) {
-                for(int third = 1; third <=9; third++) {
-                    boolean isDuped = first == second || first == third || second == third;
-                    if(!isDuped && ((first+second+third) == 15)){//We found a magic row! :D
-                        List<Integer> magicRow = new ArrayList<>();
-                        magicRow.add(first); magicRow.add(second); magicRow.add(third);
-                        if(first % 2 == 0 && second % 2 != 0 && third % 2 == 0 && second != 5){
-                            // This can be either the first or the third row
-                            result.get(1).add(magicRow);
-                            result.get(3).add(magicRow);
-                        }
-
-                        if(first % 2 != 0 && second == 5 && third % 2 != 0){
-                            // This can be the second row!
-                            result.get(2).add(magicRow);
-                        }
-                    }
-                }
-            }
+        List<List<Integer>> magicRows = gimmeAllDemPossibleMagicRows(N, magicNumber, maxNumber);
+        // Initialize all of the row containers
+        for(int rowId = 1; rowId <= N; rowId++) {
+            result.put(rowId, magicRows);
         }
 
         return result;
     }
 
-    static Set<List<List<Integer>>> getPossibleMagicSquares(Map<Integer, Set<List<Integer>>> possibleMagicRows){
+    static List<List<Integer>> gimmeAllDemPossibleMagicRows(int N, int magicNumber, int maxNumber) {
+        List<List<Integer>> magicRows = new ArrayList<>();
+        gimmeAllDemPossibleMagicRows(N, magicNumber, magicRows, new int[N], 1, maxNumber, 0);
+        return magicRows;
+    }
+
+    static void gimmeAllDemPossibleMagicRows(int N, int magicNumber, List<List<Integer>> magicRows, int[] data, int start, int end, int index) {
+        if(index == N){
+            // We finished making a combination! Is it magic?
+            List<Integer> cloned_list = Arrays.stream(data).boxed().collect(Collectors.toList());
+            if(cloned_list.stream().reduce(0, Integer::sum) == magicNumber){
+                magicRows.add(cloned_list);
+            }
+        } else {
+            for (int i = start; i <= end; i++) {
+                data[index] = i;
+                gimmeAllDemPossibleMagicRows(N, magicNumber, magicRows, data, start, end, index + 1);
+            }
+        }
+    }
+
+    static Set<List<List<Integer>>> getPossibleMagicSquares(Map<Integer, List<List<Integer>>> possibleMagicRows){
         Set<List<List<Integer>>> possibleMagicSquares = new HashSet<>();
 
-        Set<List<Integer>> firstRows = possibleMagicRows.get(1);
-        Set<List<Integer>> middleRows = possibleMagicRows.get(2);
-        Set<List<Integer>> lastRows = possibleMagicRows.get(3);
+        List<List<Integer>> firstRows = possibleMagicRows.get(1);
+        List<List<Integer>> middleRows = possibleMagicRows.get(2);
+        List<List<Integer>> lastRows = possibleMagicRows.get(3);
 
         for(List<Integer> firstRow : firstRows){
             for(List<Integer> middleRow : middleRows){
