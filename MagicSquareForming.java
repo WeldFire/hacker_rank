@@ -8,34 +8,45 @@ import java.util.regex.*;
 import java.util.stream.Collectors;
 
 
+/** Forming a Magic Square
+ * My NxN solution that solves the hackerrank problem defined here - https://www.hackerrank.com/challenges/magic-square-forming/problem
+ * Builds a list of all possible magic squares and then looks for the smallest difference.
+ * Created By: WeldFire
+ */
 public class MagicSquareForming {
-    
 
-
-
-
-
-
+    // While 'true' - Enables extra output used to debug
     public static boolean verbose = true;
 
-    // Complete the formingMagicSquare function below.
+    /**
+     * Hackerrank entry point function
+     * Fetches all possible magic rows, then magic squares 
+     * Runs the magic squares and the input square through the minifier and returns the result
+     */ 
     static int formingMagicSquare(int[][] s) {
-
         Map<Integer, List<List<Integer>>> possibleMagicRows = generateMagicRows(s.length);
         if(verbose)
             possibleMagicRows.forEach((key, value) -> System.err.println("Row " + key + " can be :" + Arrays.toString(value.toArray())));
-        Set<List<List<Integer>>> possibleMagicSquares = getPossibleMagicSquares(possibleMagicRows);
+
+        List<List<List<Integer>>> possibleMagicSquares = getPossibleMagicSquares(possibleMagicRows);
         if(verbose)
             possibleMagicSquares.forEach((magicSquare) -> {
                 System.err.println("Magic Square: ");
                 magicSquare.forEach((magicSquareRow) -> {
-                    System.err.println(Arrays.toString(magicSquareRow.toArray()));
+                    System.err.println("\t"+Arrays.toString(magicSquareRow.toArray()));
                 });
                 System.err.println("");
             });
 
+        return determineSmallestChange(s, possibleMagicSquares);
+    }
 
+    /**
+     * Loops through all of the magic squares to find the one that creates the smallest change
+     */
+    static int determineSmallestChange(int[][] inputSquare, List<List<List<Integer>>> possibleMagicSquares){
         int minChange = Integer.MAX_VALUE;
+        List<List<Integer>> bestFittingSquare = new ArrayList<>();
         
         // For each magic square, find the difference and only keep the smallest one
         for(List<List<Integer>> magicSquare : possibleMagicSquares) {
@@ -43,7 +54,7 @@ public class MagicSquareForming {
             int rowNumber = 0;
             for(List<Integer> magicSquareRow : magicSquare) {
                 Integer magicRow[] = magicSquareRow.toArray(new Integer[0]);
-                int incomingRow[] = s[rowNumber];
+                int incomingRow[] = inputSquare[rowNumber];
 
                 for(int i = 0; i < magicRow.length; i++) {
                     change += Math.abs(magicRow[i] - incomingRow[i]);
@@ -54,22 +65,35 @@ public class MagicSquareForming {
 
             if(change < minChange){
                 minChange = change;
+                bestFittingSquare = magicSquare;
             }
+        }
+
+        if(verbose){
+            System.err.println("ANSWER FOUND! :D");
+            System.err.println("Smallest change we could find is " + minChange);
+            System.err.println("The best fitting square looks like this:");
+            bestFittingSquare.forEach((magicSquareRow) -> {
+                System.err.println("\t"+Arrays.toString(magicSquareRow.toArray()));
+            });
+            System.err.println("");
         }
 
         return minChange;
     }
 
-    // Generates a map of rows with all possible values in them of size NxN
-    // Key is the row number... this could have been just a list... not sure what I was thinking...
+    /**
+     * Generates a map of rows with all possible values in them of size NxN
+     * N is the size of either the width or height of the input square we are trying to match
+     * Return object is a Map with the key representing the row number... this could have been just a list... not sure what I was thinking... and as you can probably tell from this program... I like lists a lot already
+     */
     static Map<Integer, List<List<Integer>>> generateMagicRows(int N){
         Map<Integer, List<List<Integer>>> result = new HashMap<>();
-        
-        int maxNumber = N * N;
-        int magicNumber = ((maxNumber*(maxNumber+1))/2) / N; // Limit of summation 1 .. N divided by the number of rows
 
-        List<List<Integer>> magicRows = gimmeAllDemPossibleMagicRows(N, magicNumber, maxNumber);
-        // Initialize all of the row containers
+        List<List<Integer>> magicRows = new ArrayList<>();
+        gimmeAllDemPossibleMagicRows(N, getMagicNumber(N), magicRows, new int[N], 1, getMaxNumber(N), 0);
+
+        // Initialize all of the row containers and add the possible magic rows
         for(int rowId = 1; rowId <= N; rowId++) {
             result.put(rowId, magicRows);
         }
@@ -77,12 +101,10 @@ public class MagicSquareForming {
         return result;
     }
 
-    static List<List<Integer>> gimmeAllDemPossibleMagicRows(int N, int magicNumber, int maxNumber) {
-        List<List<Integer>> magicRows = new ArrayList<>();
-        gimmeAllDemPossibleMagicRows(N, magicNumber, magicRows, new int[N], 1, maxNumber, 0);
-        return magicRows;
-    }
-
+    /**
+     * Recursive 'loop' to generate a permutation of all possible rows of size N in between the start and end indicies 
+     * This permutation is checked to be 'magic' (all numbers add up to the magic number supplied) before saving the row
+     */
     static void gimmeAllDemPossibleMagicRows(int N, int magicNumber, List<List<Integer>> magicRows, int[] data, int start, int end, int index) {
         if(index == N){
             // We finished making a combination! Is it magic?
@@ -98,42 +120,114 @@ public class MagicSquareForming {
         }
     }
 
-    static Set<List<List<Integer>>> getPossibleMagicSquares(Map<Integer, List<List<Integer>>> possibleMagicRows){
-        Set<List<List<Integer>>> possibleMagicSquares = new HashSet<>();
 
-        List<List<Integer>> firstRows = possibleMagicRows.get(1);
-        List<List<Integer>> middleRows = possibleMagicRows.get(2);
-        List<List<Integer>> lastRows = possibleMagicRows.get(3);
+    /**
+     * Generates a list of magic squares (which are lists of lists of integers)
+     */
+    static List<List<List<Integer>>> getPossibleMagicSquares(Map<Integer, List<List<Integer>>> possibleMagicRows){        
+        int N = possibleMagicRows.size();
 
-        for(List<Integer> firstRow : firstRows){
-            for(List<Integer> middleRow : middleRows){
-                for(List<Integer> lastRow : lastRows){
-                    int sums[] = new int[3];
-                    int optimal[] = new int[]{15,15,15};
+        List<List<List<Integer>>> result = new ArrayList<>();
+        getPossibleMagicSquares(getMagicNumber(N), possibleMagicRows, result, 0, new ArrayList<>());
+        return result;
+    }
 
-                    for(int i=0;i<3;i++){
-                        sums[i] = firstRow.get(i) + middleRow.get(i) + lastRow.get(i);
-                    }
-                    if(Arrays.equals(sums, optimal)){
-                        List<List<Integer>> newMagicSquare = new ArrayList<>();
-                        newMagicSquare.add(firstRow);
-                        newMagicSquare.add(middleRow);
-                        newMagicSquare.add(lastRow);
-                        possibleMagicSquares.add(newMagicSquare);
-                    }
+    /**
+     * Recursive 'loop' to generate a permutation of all possible magic squares of size NxN from all possible magic rows provided
+     * This permutation is checked to be 'magic' before saving the square
+     */
+    static void getPossibleMagicSquares(int magicNumber, Map<Integer, List<List<Integer>>> possibleMagicRows, List<List<List<Integer>>> magicSquares, int depth, List<List<Integer>> current) {
+        if(depth == possibleMagicRows.size()){
+            // Make sure that this is actually a magic square by validating the magic number in every column
+            if(isMagic(magicNumber, current)){
+                magicSquares.add(current);
+            }
+            // Else it wasn't magic and we should toss it
+        }else{
+            List<List<Integer>> currentCollection = possibleMagicRows.get(depth+1);
+
+            for(List<Integer> element : currentCollection) {
+                List<List<Integer>> copy = new ArrayList<>(current);
+                copy.add(element);
+                getPossibleMagicSquares(magicNumber, possibleMagicRows, magicSquares, depth + 1, copy);
+            }
+        }
+        
+    }
+
+    /**
+     * Determines if a magic square is actually magic or not
+     * Ensures that all the columns and diagonals sum to the magic number and makes sure that the numbers aren't used more than once
+     * magicNumber passed in just to save some computation time
+     */
+    static boolean isMagic(int magicNumber, List<List<Integer>> possibleMagicSquare){
+        int N = possibleMagicSquare.size();
+        
+        int[] instanceCount = new int[N*N+1];
+        int[] columnSums = new int[N];
+        int[] diagonalSums = new int[2];
+
+        boolean isMagic = true;
+
+        // Ensure that all the columns and diagonals are magic (Rows are already magic at this point) and make sure that the numbers aren't used more than once a piece
+        for(int rowIndex = 0; isMagic && rowIndex < N; rowIndex++){
+            List<Integer> row = possibleMagicSquare.get(rowIndex);
+            for(int columnIndex = 0; isMagic && columnIndex < N; columnIndex++){
+                int selectedValue = row.get(columnIndex);
+
+                // Sum the columns
+                columnSums[columnIndex] += selectedValue;
+
+                // Count the instances
+                instanceCount[selectedValue] += 1;
+                if(instanceCount[selectedValue] > 1){//If there is a duplicate, then die
+                    isMagic = false;
+                }
+
+                // Sum the diagonals
+                if(rowIndex == columnIndex){// Backslash Summation '\'
+                    diagonalSums[0] += selectedValue;
+                }
+
+                if((columnIndex + rowIndex) == (N-1)){// Forwardslash Summation '/'
+                    diagonalSums[1] += selectedValue;
                 }
             }
         }
 
-        return possibleMagicSquares;
+        // Ensure that all the columns summed to magic numbers
+        for(int i = 0; isMagic && i < N; i++){
+            if(columnSums[i] != magicNumber){
+                isMagic = false;
+            }
+        }
+
+        // Ensure that all the diagonals summed to magic numbers
+        for(int i = 0; isMagic && i < 2; i++){
+            if(diagonalSums[i] != magicNumber){
+                isMagic = false;
+            }
+        }
+
+        return isMagic;
+    }
+    
+    /**
+     * Determine what the maximum counting number is in a magic square of size N
+     */
+    static int getMaxNumber(int N){
+        return N * N;
     }
 
+    /**
+     * Determine what the magic number is for a magic square given the length of either the width or height of said square represented by the path variable 'N'
+     */
+    static int getMagicNumber(int N){
+        int maxNumber = getMaxNumber(N);
+        return ((maxNumber*(maxNumber+1))/2) / N; // Limit of summation 1 .. N divided by the number of rows
+    }
 
-
-
-
-
-
+    /* --------------- HACKERRANK GENERATED CODE BELOW ----------------- */
     private static final Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) throws IOException {
@@ -156,4 +250,5 @@ public class MagicSquareForming {
 
         scanner.close();
     }
+    /* --------------- HACKERRANK GENERATED CODE ABOVE ----------------- */
 }
